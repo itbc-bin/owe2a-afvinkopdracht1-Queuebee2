@@ -5,81 +5,154 @@
 
     
 def main(debug=False):
-    """
-    """
+    """ speaks for itself """
     welcome_user()
-    bestand = ask_user_for_file("FASTA filename: ")
-    enzym_bestand = ask_user_for_file("enzymes filename: ")
-    enzymes = False
-    while not enzymes:
-        enzymes = get_enzyme_data(enzym_bestand)
-
-    
-    headers, seqs = lees_inhoud(bestand) 
-    zoekwoord = input("Geef een zoekwoord op: ")
-
+ 
+    file_FASTA = ask_user_for_file("FASTA filename: ")
+    if not file_FASTA:
+        print("something went terribly wrong")
+    else:   
+        while True:
+            file_ENZYMES = ask_user_for_file("enzymes filename: ")
+        
+            try:
+                enzymes = get_enzyme_data(file_ENZYMES)
+                break
+            except ValueError:
+                print("it seems like that file hasn't got enzymes listed properly.")
+                print("make sure enzymes are line separated")
+            
 
         
-    if debug: print(enzymes)
+
+        headers, seqs = lees_inhoud(file_FASTA)
+
+        count=0
+        found = False
+        while not found:
+            searchterm = input("search term: ")
+            if debug: print(enzymes)
+            print("searching...")
+        
+        
+        
+        
+            
+            for i in range(len(headers)):
+                if searchterm in headers[i]:
+                    print(headers[i])
+                    if is_dna(seqs[i]):
+                        cuts(seqs[i], enzymes)
+                        found = True
+
+            if not found:
+                print("I couldn't find anything!")
+                count +=1
+            if count > 10:
+                print("I think you wont find anything in this file. try something else.")
+                break
     
-    for i in range(len(headers)):
-        if zoekwoord in headers[i]:
-            print(headers[i])
-            if is_dna(seqs[i]):
-                knipt(seqs[i], enzymes)
 
-                
-
+def cuts(sequence, list_of_enzymes):
+    """ docstring lost! """
+    cut = False
+    for enzyme in list_of_enzymes:
+        if enzyme[2] in sequence:
+            alignspot = sequence.find(enzyme[2])
+            print(enzyme[0],"cuts at",alignspot)
+            cut = True                
 
 def welcome_user():
     """welcomes the user"""
 #!!!Question
 #   - wrote this function to remove clutter from main()
 #   - is this 'right'?
-#   - is printlines() a bad way of printing lines in between actions?
+#   - is printLines() a bad way of printing lines in between actions?
     print("welcome")
-    printlines()
+    printLines()
     print("To work, I need 2 files:")
     print("FASTA")
     print("\tThis file should contain pure FASTA data.")
     print("enzymes")
     print("\tThis file should contain a list of ")
     print("\tenzyme-names and their 'cut' location line separated.")
-    printlines()
+    printLines()
     
-def printlines():
-    print("--------------------------------------------------------")
+
+def printLines():
+    print("-----------------------------------------------------------------------------")
+
+def is_valid(file, filetype):
+    try:
+        next(file)
+        print('file validated')
+    except UnicodeDecodeError:
+        print("This file is encoded in a way I can't read it!")
+        print("make sure the file is a",filetype,"file!")
+        printLines()
+        return False
+    except ValueError:
+        print("somehow a valueError appeared, are you sure that is the right file?")
+        return False
+#!!!QUESTION
+#   - should I put this return in the try ?
+#   - does it cost extra computing power to 'break' out of try/except when
+#     try clausule finises?
+    file.seek(0)
+    return True
+    
 
 extentions = ['.fa','.fna','.fasta', '.txt']
-def ask_user_for_file(prompt):
-    """ask a user for a file (uses promt)
-    assuming the file is a textfile...  
-    INPUT  (optional) a prompt to display
-    OUTPUT file"""
-    
+def ask_user_for_file(prompt, inputString=False, filetype='filetype'):
+    """ask a user for a file (uses promt). dependend on printLines() function.
+    INPUT  (optional) a prompt to display, a filetypename
+    OUTPUT file
+    """
+    sameloop = 0
     gevonden = False
+    confirmed = False
     
     while not gevonden:
-        filename = input(prompt)
+        if inputString:
+            print("I will start using",inputString+", is that correct? (y/n): ")
+            choice = input()
+            if choice in 'YESyes ':
+                filename = inputString
+            else:
+                print("Change the filename in the script please.")
+                filename = None
+                inputString = False
+        else:
+            filename = input(prompt)
         try:
             file = open(filename, 'r')
+            next(file)
+            file.seek(0)
             if not filename.endswith(tuple(extentions)):
-                printlines()
+                printLines()
                 print("note: this file has an unknown extention,\nit might not work properly.")
-                print("known formats are:",extentions)
-                printlines()
+                if extentions:
+                    print("known formats are:",extentions)
+                printLines()
             gevonden = True
         except IOError or FileNotFoundError:
-            printlines()
-            print("Couldn't find the file named", filename)
-            print("make sure this file is located in the same\ndirectory from which this script is running")
+            printLines()
+            print("Couldn't find the file named", filename,"\nmake sure this file is located in the same\ndirectory from which this script is running")
         except TypeError:
             print("Wrong filetype")
+        except UnicodeDecodeError:
+            print("This file is encoded in a way I can't read it!\nmake sure the file is a file of type",filetype)
         else:
-            print("Thanks, found it!")
+            print("Thanks, I found the file and it seems valid.")
         finally:
-            printlines()
-            
+            printLines()
+
+        sameloop+=1
+        if sameloop >10:
+            break
+
+    if sameloop:
+        return None
     return file
                     
 
@@ -124,6 +197,8 @@ def is_dna(seq):
             return False
     return True
 
+
+
 def get_enzyme_data(bestand):
     """
     INPUT    a file containing enzyme-names and their 'cut'-location
@@ -137,20 +212,9 @@ def get_enzyme_data(bestand):
     return my_enzymes
     
 
-def knipt(sequence, list_of_enzymes):
-    """
-    
-    """
-    knip = False
-    for enzyme in list_of_enzymes:
-
-        if enzyme[2] in sequence:
-            alignspot = sequence.find(enzyme[2])
-            print(enzyme[0],"cuts at",alignspot)
-            knip = True
-    print(knip)
 
        
-    
+   
 if __name__ == '__main__':
+    """ naim/mane """
     main()
